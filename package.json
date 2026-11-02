@@ -1,24 +1,63 @@
 {
   "name": "pi-plugins",
-  "version": "1.0.0",
-  "description": "A collection of extensions for the Pi coding agent.",
+  "version": "1.1.0",
+  "description": "Pi and OMP extensions with per-model pasted system prompts, always or once per session.",
   "type": "module",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/Tiancaizhi9098/pi-plugins.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tiancaizhi9098/pi-plugins.git"
+  },
   "homepage": "https://github.com/Tiancaizhi9098/pi-plugins#readme",
-  "bugs": { "url": "https://github.com/Tiancaizhi9098/pi-plugins/issues" },
-  "keywords": ["pi-package", "pi-extension", "plugins"],
-  "files": ["plugins", "README.md", "LICENSE"],
-  "pi": { "extensions": ["./plugins/model-system-prompts/src/index.ts"] },
-  "engines": { "node": ">=22.19.0" },
-  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" },
+  "bugs": {
+    "url": "https://github.com/Tiancaizhi9098/pi-plugins/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "plugins"
+  ],
+  "files": [
+    "plugins",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./plugins/model-system-prompts/src/index.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=1.5.0",
+    "@oh-my-pi/pi-coding-agent": ">=18.15.0"
+  },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "1.5.0",
+    "@oh-my-pi/pi-coding-agent": "18.15.0",
+    "@types/bun": "1.4.4",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
   },
   "scripts": {
-    "test": "node --test plugins/model-system-prompts/tests/*.test.ts",
-    "typecheck": "tsc --noEmit -p plugins/model-system-prompts/tsconfig.json"
+    "test": "npm run test:pi && npm run test:omp",
+    "typecheck": "tsc --noEmit -p plugins/model-system-prompts/tsconfig.json",
+    "test:pi": "node --test plugins/model-system-prompts/tests/*.test.ts",
+    "test:omp": "bun test --preload ./plugins/model-system-prompts/tests/omp/preload.ts ./plugins/model-system-prompts/tests/omp"
+  },
+  "omp": {
+    "extensions": [
+      "./plugins/model-system-prompts/src/omp.ts"
+    ]
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@oh-my-pi/pi-coding-agent": {
+      "optional": true
+    }
   }
 }

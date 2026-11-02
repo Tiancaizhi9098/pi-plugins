@@ -1,56 +1,54 @@
-# Pi Plugins
+# Pi / OMP Plugins
 
-用于 [Pi coding agent](https://pi.dev/) 的插件合集。每个插件放在独立子目录，后续插件继续添加到本仓库。
+用于 [Pi](https://pi.dev/) 和 [oh-my-pi](https://github.com/can1357/oh-my-pi) 的插件合集。每个插件放在独立子目录，后续插件继续添加到本仓库。
 
-## 插件目录
-
-| 插件 | 功能 | 文档 |
+| 插件 | 支持 | 功能 |
 | --- | --- | --- |
-| `model-system-prompts` | 为每个模型独立绑定 `APPEND_SYSTEM.md`，支持持续生效或按模型仅首轮生效 | [使用说明](plugins/model-system-prompts/README.md) |
+| [model-system-prompts](plugins/model-system-prompts/README.md) | Pi、OMP | 列出可用模型，直接粘贴系统提示词，选择持续生效或按模型仅首轮生效 |
 
 ## 安装
+
+Pi：
 
 ```text
 pi install git:github.com/Tiancaizhi9098/pi-plugins
 ```
 
-然后在 Pi 中执行 `/reload`，或重启 Pi。仓库根目录提供 Pi package 入口，目前包含模型系统提示词插件。
-
-安装完成后，用 `/model` 选择模型，再输入 `/model-system` 打开中文菜单，绑定文件并选择生效模式。安装本身不会自动绑定或注入任何模型规则。
-
-如需管理启用的插件，可运行 `pi config`。也可以克隆本仓库后单独安装某个插件目录：
+OMP：
 
 ```text
-git clone https://github.com/Tiancaizhi9098/pi-plugins.git
-pi install ./pi-plugins/plugins/model-system-prompts
+omp plugin install git:github.com/Tiancaizhi9098/pi-plugins
 ```
+
+Pi 安装后执行 `/reload` 或重启；OMP 安装后重启。两种宿主通过各自的包入口加载对应适配器。
+
+## 使用
+
+输入 `/model-system`：
+
+1. 从当前宿主的可用模型列表中选择模型。
+2. 在多行编辑框中直接粘贴提示词。
+3. 选择“持续生效”或“仅首轮生效”，保存。
+
+无需创建或绑定 `APPEND_SYSTEM.md` 文件，也无需先切换对话模型。已有配置的模型可编辑文本、切换模式、查看状态、重置首轮记录或解除绑定。`/model-system list` 可以直接列出可用模型及配置状态。
+
+Pi 和 OMP 的配置分别保存，各自管理会话中的首轮记录。安装本身不添加任何个人规则。详见 [使用说明](plugins/model-system-prompts/README.md)。
 
 ## 更新与卸载
 
 ```text
 pi update --extensions
 pi remove git:github.com/Tiancaizhi9098/pi-plugins
+
+omp plugin upgrade pi-plugins
+omp plugin uninstall pi-plugins
 ```
 
-完成后执行 `/reload`。个人提示词文件和插件配置不会被自动删除。
+完成后重载 Pi 或重启 OMP。个人提示词配置不会被自动删除。
 
-## 仓库结构
+## 开发
 
-```text
-pi-plugins/
-├── package.json                 # 插件合集的 Pi 安装入口
-└── plugins/
-    └── model-system-prompts/
-        ├── src/                 # 插件实现
-        ├── tests/               # 离线测试
-        ├── examples/            # 提示词示例
-        ├── package.json         # 单独安装入口
-        └── README.md            # 详细说明
-```
-
-## 开发验证
-
-要求 Node.js >= 22.19.0；当前插件针对 Pi 1.5.0 验证。
+验证环境：Pi 1.5.0、OMP 18.15.0、Node.js 24、Bun 1.4.3。开发要求 Node.js >= 22.19.0，并安装 Bun 以运行 OMP 测试。
 
 ```text
 npm ci --ignore-scripts
@@ -58,6 +56,8 @@ npm test
 npm run typecheck
 ```
 
-18 项测试覆盖模型独立绑定、持续/首轮注入、工具循环、自动重试、恢复、重载、压缩和配置错误。测试使用真实 Pi SDK 和离线模型流，不调用付费模型 API。
+测试使用真实宿主 SDK、临时配置目录和离线模型流，覆盖模型选择、粘贴保存、取消、持续/首轮模式、工具循环、自动重试与会话恢复。不会读取个人密钥或调用付费模型 API。
+
+插件位于 `plugins/model-system-prompts/`；`src/index.ts` 是 Pi 入口，`src/omp.ts` 是 OMP 入口。也可以在该插件目录运行 `pi install .` 或 `omp plugin link .` 单独安装。
 
 许可证：[MIT](LICENSE)。

@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 export type Mode = "always" | "once";
-export interface Binding { file: string; mode: Mode }
+export type Binding = { prompt: string; mode: Mode; file?: never } | { file: string; mode: Mode; prompt?: never };
 export interface Config { version: 1; bindings: Record<string, Binding> }
 export const STATE_TYPE = "model-system-prompts-state";
 
@@ -20,11 +20,14 @@ export function loadConfig(file: string): Config {
   }
   const bindings: Record<string, Binding> = {};
   for (const [key, value] of Object.entries(raw.bindings)) {
-    if (!/^[^/]+\/.+/.test(key) || !isObject(value) || typeof value.file !== "string" || !value.file.trim()
+    if (!/^[^/]+\/.+/.test(key) || !isObject(value)
+      || !((typeof value.prompt === "string" && !!value.prompt.trim() && value.file === undefined)
+        || (typeof value.file === "string" && !!value.file.trim() && value.prompt === undefined))
       || (value.mode !== "always" && value.mode !== "once")) {
-      throw new Error(`模型绑定无效：${key}（file 不能为空，mode 只能为 always 或 once）`);
+      throw new Error(`模型绑定无效：${key}（prompt 不能为空，mode 只能为 always 或 once）`);
     }
-    bindings[key] = { file: value.file, mode: value.mode };
+    bindings[key] = typeof value.prompt === "string" ? { prompt: value.prompt, mode: value.mode }
+      : { file: value.file as string, mode: value.mode };
   }
   return { version: 1, bindings };
 }

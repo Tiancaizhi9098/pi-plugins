@@ -2,11 +2,11 @@
   "version": 1,
   "bindings": {
     "provider-a/model-a": {
-      "file": "./model-prompts/model-a/APPEND_SYSTEM.md",
+      "prompt": "请使用中文回答。\n先说明结论，再给出必要解释。",
       "mode": "always"
     },
     "provider-b/model-b": {
-      "file": "./model-prompts/model-b/APPEND_SYSTEM.md",
+      "prompt": "这是你在本会话首次使用时的规则。\n开始前先简要梳理任务目标。",
       "mode": "once"
     }
   }
