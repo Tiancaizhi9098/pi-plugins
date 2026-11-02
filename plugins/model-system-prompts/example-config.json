@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "bindings": {
+    "provider-a/model-a": {
+      "file": "./model-prompts/model-a/APPEND_SYSTEM.md",
+      "mode": "always"
+    },
+    "provider-b/model-b": {
+      "file": "./model-prompts/model-b/APPEND_SYSTEM.md",
+      "mode": "once"
+    }
+  }
+}

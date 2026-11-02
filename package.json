@@ -1,0 +1,24 @@
+{
+  "name": "pi-plugins",
+  "version": "1.0.0",
+  "description": "A collection of extensions for the Pi coding agent.",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/Tiancaizhi9098/pi-plugins.git" },
+  "homepage": "https://github.com/Tiancaizhi9098/pi-plugins#readme",
+  "bugs": { "url": "https://github.com/Tiancaizhi9098/pi-plugins/issues" },
+  "keywords": ["pi-package", "pi-extension", "plugins"],
+  "files": ["plugins", "README.md", "LICENSE"],
+  "pi": { "extensions": ["./plugins/model-system-prompts/src/index.ts"] },
+  "engines": { "node": ">=22.19.0" },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.5.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "scripts": {
+    "test": "node --test plugins/model-system-prompts/tests/*.test.ts",
+    "typecheck": "tsc --noEmit -p plugins/model-system-prompts/tsconfig.json"
+  }
+}
