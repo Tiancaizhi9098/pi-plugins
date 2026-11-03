@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { isConsumed, loadConfig, readPrompt, resolvePromptPath, saveBinding, STATE_TYPE, type Binding, type Mode } from "./core.ts";
+import { isConsumed, latestCompactionId, loadConfig, readPrompt, resolvePromptPath, saveBinding, STATE_TYPE, type Binding, type Mode } from "./core.ts";
 
 /** Small structural interface shared by the Pi and OMP SDKs. */
 export interface PromptContext {
@@ -33,8 +33,8 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : S
 
 export function createController(agentDir: string, appendEntry: (type: string, data: unknown) => void) {
   const configPath = join(agentDir, "model-system-prompts.json");
-  let pending: { model: string; session: string } | undefined;
-  let run: { session: string; prompts: Map<string, string | undefined> } | undefined;
+  let pending: { model: string; session: string; compaction?: string } | undefined;
+  let run: { session: string; compaction?: string; prompts: Map<string, string | undefined> } | undefined;
   const bindingFor = (key: string) => loadConfig(configPath).bindings[key];
   const consumed = (ctx: PromptContext, key: string) => isConsumed(ctx.sessionManager.getBranch(), key);
   const textFor = (binding: Binding, ctx: PromptContext) => binding.prompt !== undefined ? binding.prompt
@@ -170,8 +170,13 @@ export function createController(agentDir: string, appendEntry: (type: string, d
     } catch (error) { notify(ctx, errorText(error), "error"); }
   }
 
+  function start(ctx: PromptContext) {
+    pending = undefined;
+    run = { session: ctx.sessionManager.getSessionId(), compaction: latestCompactionId(ctx.sessionManager.getBranch()), prompts: new Map() };
+  }
+
   function begin(ctx: PromptContext): string | undefined {
-    run = { session: ctx.sessionManager.getSessionId(), prompts: new Map() };
+    start(ctx);
     return forRequest(ctx);
   }
 
@@ -181,13 +186,18 @@ export function createController(agentDir: string, appendEntry: (type: string, d
     const key = keyOf(ctx);
     if (!key || !run || run.session !== ctx.sessionManager.getSessionId()) return;
     try {
+      const compaction = latestCompactionId(ctx.sessionManager.getBranch());
+      if (run.compaction !== compaction) {
+        run.compaction = compaction;
+        run.prompts.clear();
+      }
       if (!run.prompts.has(key)) {
         const binding = bindingFor(key);
         const content = !binding || (binding.mode === "once" && consumed(ctx, key)) ? undefined : textFor(binding, ctx);
         run.prompts.set(key, content);
       }
       const content = run.prompts.get(key);
-      if (content !== undefined) pending = { model: key, session: run.session };
+      if (content !== undefined) pending = { model: key, session: run.session, compaction: run.compaction };
       return content;
     } catch (error) {
       run.prompts.set(key, undefined);
@@ -198,7 +208,8 @@ export function createController(agentDir: string, appendEntry: (type: string, d
   function messageEnd(message: { role: string; stopReason?: string; provider?: string; model?: string }, ctx: PromptContext) {
     if (!pending || message.role !== "assistant" || message.stopReason === "error" || message.stopReason === "aborted") return;
     if (message.provider && message.model && `${message.provider}/${message.model}` !== pending.model) return;
-    if (pending.session === ctx.sessionManager.getSessionId() && !consumed(ctx, pending.model)) {
+    if (pending.session === ctx.sessionManager.getSessionId()
+      && pending.compaction === latestCompactionId(ctx.sessionManager.getBranch()) && !consumed(ctx, pending.model)) {
       appendEntry(STATE_TYPE, { version: 1, model: pending.model, consumed: true });
     }
     pending = undefined;
@@ -206,11 +217,12 @@ export function createController(agentDir: string, appendEntry: (type: string, d
   }
 
   function clear(ctx: PromptContext) { pending = undefined; run = undefined; updateStatus(ctx); }
+  function compacted(ctx: PromptContext) { pending = undefined; updateStatus(ctx); }
   const completions = (prefix: string) => {
     const matches = ["edit", "mode always", "mode once", "status", "list", "reset", "unbind", "help"]
       .filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value }));
     return matches.length ? matches : null;
   };
   const hasPolicy = () => !!run && [...run.prompts.values()].some((text) => text !== undefined);
-  return { command, completions, begin, forRequest, hasPolicy, messageEnd, clear, updateStatus };
+  return { command, completions, start, begin, forRequest, hasPolicy, messageEnd, clear, compacted, updateStatus };
 }

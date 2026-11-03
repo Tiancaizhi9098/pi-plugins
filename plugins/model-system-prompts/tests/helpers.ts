@@ -39,11 +39,12 @@ export async function fixture(t: TestContext) {
     return file;
   };
 
-  async function start(manager = SessionManager.inMemory(cwd), extra: ExtensionFactory[] = []) {
-    const settings = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false }, cacheWarming: "off" });
+  async function start(manager = SessionManager.inMemory(cwd), extra: ExtensionFactory[] = [],
+    transport: "responses" | "pi-messages" = "responses", later: ExtensionFactory[] = []) {
+    const settings = SettingsManager.inMemory({ compaction: { enabled: false, keepRecentTokens: 1 }, retry: { enabled: false }, cacheWarming: "off" });
     const loader = new DefaultResourceLoader({ cwd, agentDir, settingsManager: settings, noExtensions: true,
       noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
-      systemPrompt: "BASE_SYSTEM", appendSystemPrompt: ["NATIVE_COMMON_RULE"], extensionFactories: [...extra, extension] });
+      systemPrompt: "BASE_SYSTEM", appendSystemPrompt: ["NATIVE_COMMON_RULE"], extensionFactories: [...extra, extension, ...later] });
     await loader.reload();
     const { session, extensionsResult } = await createAgentSession({ cwd, agentDir, settingsManager: settings, modelRuntime: runtime,
       model: model("test-a"), resourceLoader: loader, sessionManager: manager, tools: [] });
@@ -53,8 +54,18 @@ export async function fixture(t: TestContext) {
     await session.bindExtensions({ mode: "print", onError: (error) => errors.push(error.error) });
     const requests: { provider: string; system: string; messages: unknown[] }[] = [];
     const replies: Partial<AssistantMessage>[] = [];
-    session.agent.streamFunction = (selected, context) => {
-      requests.push({ provider: selected.provider, system: getCurrentSystemPrompt(context.messages), messages: structuredClone(context.messages) });
+    session.agent.streamFunction = async (selected, context, options) => {
+      let system: string;
+      if (transport === "pi-messages") {
+        const payload = { model: selected.id, context, options: { sessionId: options?.sessionId } };
+        const wire = (await options?.onPayload?.(payload, selected) ?? payload) as typeof payload;
+        system = getCurrentSystemPrompt(wire.context.messages);
+      } else {
+        const payload = { instructions: getCurrentSystemPrompt(context.messages) };
+        const wire = (await options?.onPayload?.(payload, selected) ?? payload) as typeof payload;
+        system = wire.instructions;
+      }
+      requests.push({ provider: selected.provider, system, messages: structuredClone(context.messages) });
       const message: AssistantMessage = {
         role: "assistant", content: [{ type: "text", text: "OK" }], api: selected.api, provider: selected.provider, model: selected.id,
         stopReason: "stop", timestamp: Date.now(),

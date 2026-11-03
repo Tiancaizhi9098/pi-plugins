@@ -80,10 +80,20 @@ export function readPrompt(file: string, agentDir: string, cwd: string): string 
 export function isConsumed(entries: readonly unknown[], model: string): boolean {
   let consumed = false;
   for (const entry of entries) {
+    // A committed compaction starts a new allowance for every model on this branch.
+    if (isObject(entry) && entry.type === "compaction") { consumed = false; continue; }
     if (!isObject(entry) || entry.type !== "custom" || entry.customType !== STATE_TYPE || !isObject(entry.data)) continue;
     if (entry.data.version === 1 && entry.data.model === model && typeof entry.data.consumed === "boolean") {
       consumed = entry.data.consumed;
     }
   }
   return consumed;
+}
+
+export function latestCompactionId(entries: readonly unknown[]): string | undefined {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (isObject(entry) && entry.type === "compaction" && typeof entry.id === "string") return entry.id;
+  }
+  return undefined;
 }

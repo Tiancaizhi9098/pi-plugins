@@ -53,6 +53,7 @@ export default function modelSystemPrompts(pi: ExtensionAPI): void {
     fallbackModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined;
   });
   pi.on("message_end", (event, ctx) => controller.messageEnd(event.message, ctx));
+  pi.on("session_compact", (_event, ctx) => controller.compacted(ctx));
   pi.on("agent_end", (event, ctx) => {
     if (!event.willContinue) { fallbackModel = undefined; controller.clear(ctx); }
   });

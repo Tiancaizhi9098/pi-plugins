@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { test } from "node:test";
 import { join } from "node:path";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { SessionManager, type ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { fixture } from "./helpers.ts";
 import { loadConfig, isConsumed, saveBinding } from "../src/core.ts";
@@ -109,7 +109,7 @@ test("a cancelled first response retains the first-run allowance", async (t) => 
   assert.match(h.requests[1].system, /ABORTED_FIRST_RULE/);
 });
 
-test("compaction preserves consumption while rewinding before use restores the allowance", async (t) => {
+test("compaction renews allowance and preserves it across restored sessions", async (t) => {
   const f = await fixture(t);
   f.bind("test-a", "once", "BRANCH_RULE");
   const h = await f.start();
@@ -118,7 +118,9 @@ test("compaction preserves consumption while rewinding before use restores the a
   h.manager.appendCompaction("Previous work summarized", null, 100);
   const compacted = await f.start(h.manager);
   await compacted.session.prompt("after compaction");
-  assert.doesNotMatch(compacted.requests[0].system, /BRANCH_RULE/);
+  assert.match(compacted.requests[0].system, /BRANCH_RULE/);
+  await compacted.session.prompt("after the renewed first run");
+  assert.doesNotMatch(compacted.requests[1].system, /BRANCH_RULE/);
   h.manager.branch(before);
   const rewound = await f.start(h.manager);
   await rewound.session.prompt("new branch");
@@ -204,4 +206,53 @@ test("bind, mode, reset and unbind commands operate on the current model", async
   assert.equal(loadConfig(f.configPath).bindings["test-a/shared"].mode, "always");
   await h.session.prompt("/model-system unbind");
   assert.deepEqual(loadConfig(f.configPath).bindings, {});
+});
+
+for (const transport of ["responses", "pi-messages"] as const) test(`Pi ${transport} preserves request-time system rules for bound, consumed, and unbound models`, async (t) => {
+  const f = await fixture(t);
+  f.bind("test-a", "once", "MY_ONCE_RULE");
+  const h = await f.start(undefined, [(pi) => {
+    pi.on("context_with_system", (event) => ({ messages: [...event.messages,
+      { role: "system", content: "", sections: { other_request_rule: "OTHER_REQUEST_SYSTEM_RULE" }, timestamp: Date.now() },
+    ] }));
+  }], transport);
+  await h.session.prompt("bound model");
+  await h.session.prompt("consumed model");
+  await h.session.setModel(f.model("test-c"));
+  await h.session.prompt("unbound model");
+  assert.ok(h.requests.every((r) => r.system.includes("OTHER_REQUEST_SYSTEM_RULE")));
+  assert.match(h.requests[0].system, /MY_ONCE_RULE/);
+  assert.doesNotMatch(h.requests[1].system + h.requests[2].system, /MY_ONCE_RULE/);
+  assert.doesNotMatch(JSON.stringify(h.manager.getEntries()), /MY_ONCE_RULE|OTHER_REQUEST_SYSTEM_RULE/);
+  assert.deepEqual(h.errors, []);
+});
+
+for (const position of ["before", "after"] as const) test(`Pi preserves an opaque prompt from an extension loaded ${position} it`, async (t) => {
+  const f = await fixture(t);
+  f.bind("test-a", "always", "MY_ALWAYS_RULE");
+  const other: ExtensionFactory = (pi) => {
+    pi.on("before_agent_start", (event) => ({ systemPrompt: `${event.systemPrompt}\nOTHER_OPAQUE_RULE` }));
+  };
+  const h = await f.start(undefined, position === "before" ? [other] : [], "pi-messages", position === "after" ? [other] : []);
+  await h.session.prompt("first");
+  await h.session.prompt("second");
+  assert.ok(h.requests.every((r) => r.system.includes("OTHER_OPAQUE_RULE") && r.system.includes("MY_ALWAYS_RULE")));
+  assert.doesNotMatch(JSON.stringify(h.manager.getEntries()), /MY_ALWAYS_RULE/);
+  assert.deepEqual(h.errors, []);
+});
+
+test("Pi keeps the rule in the latest structured addendum when native content changes", async (t) => {
+  const f = await fixture(t);
+  f.bind("test-a", "always", "LATEST_RULE");
+  let version = 0;
+  const h = await f.start(undefined, [(pi) => {
+    pi.on("before_agent_start", (event) => { event.systemPromptOptions.appendSystemPrompt += `\nNATIVE_VERSION_${++version}`; });
+  }], "pi-messages");
+  await h.session.prompt("one");
+  await h.session.prompt("two");
+  assert.match(h.requests[1].system, /NATIVE_VERSION_2/);
+  assert.doesNotMatch(h.requests[1].system, /NATIVE_VERSION_1/);
+  assert.match(h.requests[1].system, /LATEST_RULE/);
+  assert.equal(h.requests[1].system.split("LATEST_RULE").length, 2);
+  assert.doesNotMatch(JSON.stringify(h.manager.getEntries()), /LATEST_RULE/);
 });

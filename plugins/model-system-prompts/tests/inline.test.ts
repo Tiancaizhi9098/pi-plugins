@@ -12,7 +12,7 @@ test("inline prompts preserve pasted text and inject once per provider/model", a
   const h = await f.start();
   await h.session.prompt("first");
   await h.session.prompt("second");
-  assert.ok(h.requests[0].system.endsWith(prompt));
+  assert.ok(h.requests[0].system.includes(prompt));
   assert.ok(!h.requests[1].system.includes(prompt));
   assert.ok(!JSON.stringify(h.manager.getEntries()).includes(prompt));
 });

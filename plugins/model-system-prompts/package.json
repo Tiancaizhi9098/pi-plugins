@@ -1,6 +1,6 @@
 {
   "name": "pi-model-system-prompts",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Pi and OMP extensions with per-model pasted system prompts, always or once per session.",
   "type": "module",
   "license": "MIT",

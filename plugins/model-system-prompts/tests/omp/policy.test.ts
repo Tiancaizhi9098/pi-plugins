@@ -57,3 +57,32 @@ test("Codex split instructions/developer blocks replace the owned policy exactly
   expect(JSON.stringify(result)).toContain("NATIVE_COMMON");
   expect(result.input[1]).toEqual(payload.input[1]);
 });
+
+test("Pi raw context replaces only the latest system section marker without mutating history or tools", () => {
+  const policy = createPolicy();
+  const marker = policy.block("");
+  const payload = { model: "test", context: { messages: [
+    { role: "system", content: "BASE", sections: { addendum: `OLD_NATIVE\n\n${marker}` },
+      toolsAdded: [{ name: "test", parameters: { type: "object" } }], timestamp: 1 },
+    { role: "user", content: marker, timestamp: 2 },
+    { role: "system", content: "", sections: { addendum: `NEW_NATIVE\n\n${marker}`, removed: null },
+      toolsRemoved: [{ name: "removed" }], timestamp: 3 },
+    { role: "toolResult", content: [{ type: "text", text: marker }], timestamp: 4 },
+  ] }, options: { sessionId: "test-session" } };
+  const snapshot = structuredClone(payload);
+  expect(policy.hasMarker(payload)).toBe(true);
+  const result = policy.patch(payload, "NEW_RULE", "last").payload as typeof payload;
+  expect(payload).toEqual(snapshot);
+  expect(result.context.messages[0].sections!.addendum).toBe("OLD_NATIVE");
+  expect(result.context.messages[2].sections!.addendum).toContain("NEW_RULE");
+  expect(result.context.messages[2].sections!.removed).toBeNull();
+  expect(result.context.messages[0].toolsAdded).toEqual(payload.context.messages[0].toolsAdded);
+  expect(result.context.messages[2].toolsRemoved).toEqual(payload.context.messages[2].toolsRemoved);
+  expect(result.context.messages[1]).toEqual(payload.context.messages[1]);
+  expect(result.context.messages[3]).toEqual(payload.context.messages[3]);
+  expect(result.options).toEqual(payload.options);
+  expect(policy.hasMarker({ context: { messages: [payload.context.messages[1], payload.context.messages[3]] } })).toBe(false);
+  const stripped = policy.patch(payload, undefined, "last").payload as typeof payload;
+  expect(stripped.context.messages[0].sections!.addendum).toBe("OLD_NATIVE");
+  expect(stripped.context.messages[2].sections!.addendum).toBe("NEW_NATIVE");
+});

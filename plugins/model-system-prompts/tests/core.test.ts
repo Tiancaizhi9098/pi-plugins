@@ -67,3 +67,14 @@ test("consumption follows model-specific records and resets in the active branch
   assert.equal(isConsumed(entries.slice(0, 1), "a/model"), true);
   assert.equal(isConsumed([], "a/model"), false);
 });
+
+test("committed compaction grants every model a fresh allowance on that branch", () => {
+  const used = (model: string) => ({ type: "custom", customType: "model-system-prompts-state", data: { version: 1, model, consumed: true } });
+  const branch = [used("a/model"), used("b/model"), { type: "compaction", id: "compact-1" }];
+  assert.equal(isConsumed(branch, "a/model"), false);
+  assert.equal(isConsumed(branch, "b/model"), false);
+  assert.equal(isConsumed([...branch, used("a/model")], "a/model"), true);
+  assert.equal(isConsumed([...branch, used("a/model")], "b/model"), false);
+  assert.equal(isConsumed(branch.slice(0, 2), "a/model"), true);
+  assert.equal(isConsumed([...branch, used("a/model"), { type: "compaction", id: "compact-2" }], "a/model"), false);
+});

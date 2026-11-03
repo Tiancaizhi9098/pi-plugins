@@ -261,3 +261,74 @@ test("OMP side requests without a run marker keep their policy and do not steal 
   expect(isConsumed(f.session.sessionManager.getBranch(), "test-a/shared")).toBe(true);
   expect(isConsumed(f.session.sessionManager.getBranch(), "test-b/shared")).toBe(false);
 });
+
+const offlineCompactor: ExtensionFactory = (pi) => { pi.on("session_before_compact", (event) => ({ compaction: {
+  summary: "Offline summary of previous work", shortSummary: "Offline summary",
+  firstKeptEntryId: event.preparation.firstKeptEntryId, tokensBefore: event.preparation.tokensBefore,
+} })); };
+
+test("OMP manual compaction renews each model once", async () => {
+  const f = await fixture([offlineCompactor], undefined, { "compaction.keepRecentTokens": 1 });
+  f.bind("test-a", "once", "COMPACT_A");
+  f.bind("test-b", "once", "COMPACT_B");
+  await f.session.prompt("A before");
+  await f.session.setModel(f.model("test-b"));
+  await f.session.prompt("B before");
+  await f.session.compact();
+  expect(isConsumed(f.session.sessionManager.getBranch(), "test-a/shared")).toBe(false);
+  expect(isConsumed(f.session.sessionManager.getBranch(), "test-b/shared")).toBe(false);
+  await f.session.prompt("B after");
+  await f.session.prompt("B again");
+  await f.session.setModel(f.model("test-a"));
+  await f.session.prompt("A after");
+  await f.session.prompt("A again");
+  expect(f.requests[2].system).toContain("COMPACT_B");
+  expect(f.requests[3].system).not.toContain("COMPACT_B");
+  expect(f.requests[4].system).toContain("COMPACT_A");
+  expect(f.requests[5].system).not.toContain("COMPACT_A");
+  expect(JSON.stringify(f.session.sessionManager.getEntries())).not.toContain("COMPACT_A");
+  expect(f.errors).toEqual([]);
+});
+
+test("OMP automatic overflow compaction reinjects for its immediate continuation", async () => {
+  const f = await fixture([offlineCompactor], undefined, { "compaction.keepRecentTokens": 1 });
+  f.bind("test-a", "once", "OVERFLOW_RULE");
+  await f.session.prompt("first use");
+  f.session.setAutoCompactionEnabled(true);
+  f.replies.push({ content: [], stopReason: "error", errorMessage: "maximum context length exceeded" });
+  await f.session.prompt("overflow then continue");
+  expect(f.requests.length).toBe(3);
+  expect(f.requests[1].system).not.toContain("OVERFLOW_RULE");
+  expect(f.requests[2].system).toContain("OVERFLOW_RULE");
+  await f.session.prompt("next user run");
+  expect(f.requests[3].system).not.toContain("OVERFLOW_RULE");
+  expect(f.errors).toEqual([]);
+}, 15000);
+
+test("OMP cancelled compaction preserves the consumed record", async () => {
+  const f = await fixture([(pi) => { pi.on("session_before_compact", () => ({ cancel: true })); }], undefined,
+    { "compaction.keepRecentTokens": 1 });
+  f.bind("test-a", "once", "CANCELLED_COMPACT");
+  await f.session.prompt("first use");
+  await expect(f.session.compact()).rejects.toThrow(/cancel/i);
+  await f.session.prompt("next user run");
+  expect(f.requests[1].system).not.toContain("CANCELLED_COMPACT");
+});
+
+test("OMP compacted session resumes with one fresh allowance and retains its next consumption", async () => {
+  const manager = SessionManager.create(join(getAgentDir(), "project"), join(getAgentDir(), "sessions"));
+  const f = await fixture([offlineCompactor], manager, { "compaction.keepRecentTokens": 1 });
+  f.bind("test-a", "once", "COMPACT_RESUME_RULE");
+  await f.session.prompt("first");
+  await f.session.prompt("more context");
+  await f.session.compact();
+  const file = manager.getSessionFile()!;
+  await f.session.dispose();
+  const resumed = await fixture([], await SessionManager.open(file));
+  resumed.bind("test-a", "once", "COMPACT_RESUME_RULE");
+  await resumed.session.prompt("after compaction and resume");
+  await resumed.initialize();
+  await resumed.session.prompt("next");
+  expect(resumed.requests[0].system).toContain("COMPACT_RESUME_RULE");
+  expect(resumed.requests[1].system).not.toContain("COMPACT_RESUME_RULE");
+});
