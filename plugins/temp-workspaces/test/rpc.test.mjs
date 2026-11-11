@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { inside, WorkspaceManager } from "../manager.mjs";
 
-for (const mode of ["standalone", "collection"]) {
+for (const mode of ["auto-discovery", "local-package"]) {
 test(`installed Pi loads the ${mode} package and handles actual RPC new/resume transitions`, { timeout: 25000 }, async () => {
   const suite = path.dirname(fileURLToPath(import.meta.url));
   const testRoot = path.join(suite, ".runs");
@@ -21,14 +21,14 @@ test(`installed Pi loads the ${mode} package and handles actual RPC new/resume t
   const bin = typeof packageInfo.bin === "string" ? packageInfo.bin : packageInfo.bin.pi;
   const launcher = path.resolve(packageDir, bin);
   const extraArgs = [];
-  if (mode === "standalone") {
+  if (mode === "auto-discovery") {
     const extensionDir = path.join(agentDir, "extensions", "pi-temp-workspaces");
     fs.mkdirSync(extensionDir, { recursive: true });
     for (const file of ["index.js", "extension.mjs", "manager.mjs", "janitor.mjs", "package.json"]) {
       fs.copyFileSync(fileURLToPath(new URL(`../${file}`, import.meta.url)), path.join(extensionDir, file));
     }
   } else {
-    extraArgs.push("-e", path.resolve(suite, "../../.."));
+    extraArgs.push("-e", path.resolve(suite, ".."));
   }
   const child = spawn(process.execPath, [launcher, "--mode", "rpc", "--offline", ...extraArgs], {
     cwd: root, windowsHide: true,
@@ -65,10 +65,8 @@ test(`installed Pi loads the ${mode} package and handles actual RPC new/resume t
     const commands = await request("get_commands");
     assert.equal(commands.success, true, JSON.stringify(commands));
     assert.match(JSON.stringify(commands), /temp-work/);
-    if (mode === "collection") {
-      assert.match(JSON.stringify(commands), /model-system/);
-      assert.match(JSON.stringify(commands), /"goal"/);
-    }
+    assert.doesNotMatch(JSON.stringify(commands), /model-system/);
+    assert.doesNotMatch(JSON.stringify(commands), /"name":"goal"/);
     const records = new WorkspaceManager({ agentDir, root }).records;
     const list = () => fs.readdirSync(records).filter((name) => name.endsWith(".json")).map((name) => JSON.parse(fs.readFileSync(path.join(records, name), "utf8")));
     assert.equal(list().length, 1, stderr);

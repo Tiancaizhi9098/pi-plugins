@@ -20,13 +20,15 @@
 
 ## 从插件中心安装
 
-```text
-pi install git:github.com/Tiancaizhi9098/pi-plugins
+```powershell
+git clone https://github.com/Tiancaizhi9098/pi-plugins.git
+cd pi-plugins
+pi install ./plugins/goal-retry
 ```
 
-插件中心的 Pi 入口同时加载 Goal Retry 和模型系统提示词插件。安装前移除其他 Goal 扩展的加载声明，避免重复的 `/goal` 命令；例如原版可用 `pi remove npm:@narumitw/pi-goal` 移除。已有本地修改版也只保留一个加载来源。
+此命令只安装 Goal Retry。安装前移除其他 Goal 扩展的加载声明，避免重复的 `/goal` 命令；例如原版可用 `pi remove npm:@narumitw/pi-goal` 移除。已有本地修改版也只保留一个加载来源。
 
-若只需要这个插件，克隆仓库后在 `plugins/goal-retry/` 运行 `pi install .`。仓库已包含构建后的 `dist/`，无需先构建。
+也可以在 `plugins/goal-retry/` 目录运行 `pi install .`。本地安装会引用源码目录，请保留仓库；更新时在仓库中执行 `git pull` 后 `/reload`。仓库已包含构建后的 `dist/`，无需先构建。
 
 ## 当前窗口如何启用
 

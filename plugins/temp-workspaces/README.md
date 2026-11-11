@@ -43,13 +43,7 @@ Shell、MCP 和其他扩展仍保留本机权限。外部工具的专用缓存�
 
 ## 安装和停止
 
-安装整个插件合集：
-
-```text
-pi install git:github.com/Tiancaizhi9098/pi-plugins
-```
-
-或克隆仓库后，只安装本插件：
+克隆仓库后安装本插件：
 
 ```powershell
 git clone https://github.com/Tiancaizhi9098/pi-plugins.git
@@ -57,7 +51,7 @@ Set-Location pi-plugins
 pi install ./plugins/temp-workspaces
 ```
 
-新开 Pi 或执行 `/reload`。曾经手动放置过 `~/.pi/agent/extensions/pi-temp-workspaces/` 独立版的用户，应先退出 Pi、按下文停止旧清理进程并将旧扩展移出 `extensions`，再安装合集，避免重复加载。
+新开 Pi 或执行 `/reload`。本地安装会引用源码目录，请保留仓库；更新时在仓库中执行 `git pull` 后 `/reload`。曾经手动放置过 `~/.pi/agent/extensions/pi-temp-workspaces/` 独立版的用户，应先退出 Pi、按下文停止旧清理进程并将旧扩展移出 `extensions`，再安装本插件，避免重复加载。
 
 ### 可选：配置 PowerShell 7 的 pi 启动目录
 
@@ -102,7 +96,7 @@ node ./janitor.mjs --agent-dir $piAgentDir --stop
 node ./janitor.mjs --agent-dir $piAgentDir --status
 ```
 
-停用时先在 `/temp-work stop` 或上面的 Node 命令中停止清理，再退出使用中的 Pi。安装过启动目录配置的用户先运行 `-Uninstall`，再用 `pi remove git:github.com/Tiancaizhi9098/pi-plugins` 卸载合集，或在原克隆仓库中执行 `pi remove ./plugins/temp-workspaces` 卸载单独安装的插件。手动安装的扩展可移出 `extensions`。已有对话和工作文件会保留；多个自定义父目录的后台进程需分别停止，Node 命令可附加 `--root <绝对路径>`。
+停用时先在 `/temp-work stop` 或上面的 Node 命令中停止清理，再退出使用中的 Pi。安装过启动目录配置的用户先运行 `-Uninstall`，再在原克隆仓库中执行 `pi remove ./plugins/temp-workspaces`。手动安装的扩展可移出 `extensions`。已有对话和工作文件会保留；多个自定义父目录的后台进程需分别停止，Node 命令可附加 `--root <绝对路径>`。
 
 异常清理会保留目录并记录在状态目录的 `cleanup.log` 中。`/temp-work status` 显示进程未运行时，可用 `/temp-work start` 重启；目录标记损坏时不要手动伪造标记，应先另行保存需要的文件。扩展会保留旧的损坏进程锁以便检查，并可在其超过 30 秒后重新启动清理进程。
 

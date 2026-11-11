@@ -6,19 +6,26 @@
 
 ## 安装
 
+先克隆仓库并进入根目录：
+
+```powershell
+git clone https://github.com/Tiancaizhi9098/pi-plugins.git
+cd pi-plugins
+```
+
 Pi：
 
 ```text
-pi install git:github.com/Tiancaizhi9098/pi-plugins
+pi install ./plugins/model-system-prompts
 ```
 
 OMP：
 
 ```text
-omp plugin install git:github.com/Tiancaizhi9098/pi-plugins
+omp plugin install ./plugins/model-system-prompts
 ```
 
-安装后，Pi 执行 `/reload` 或重启；OMP 重启。合集根目录和本插件目录都声明了 `pi.extensions`、`omp.extensions`，宿主只加载自己的适配器。
+安装后，Pi 执行 `/reload` 或重启；OMP 重启。本插件声明了 `pi.extensions`、`omp.extensions`，宿主只加载自己的适配器。
 
 如已克隆仓库，也可以在 `plugins/model-system-prompts` 目录运行 `pi install .` 或 `omp plugin link .`。本地链接安装后应保留源码目录。
 
@@ -112,11 +119,11 @@ OMP 的回合内换模适配覆盖 OpenAI/Codex、Anthropic/Bedrock、Google、A
 ## 卸载
 
 ```text
-pi remove git:github.com/Tiancaizhi9098/pi-plugins
-omp plugin uninstall pi-plugins
+pi remove ./plugins/model-system-prompts
+omp plugin uninstall pi-model-system-prompts
 ```
 
-单独安装本插件目录时，OMP 的包名为 `pi-model-system-prompts`；Pi 本地安装则传入安装时的绝对路径。随后重载或重启宿主。个人配置保留。
+以上 Pi 命令在原克隆仓库根目录执行，也可传入插件目录的绝对路径；OMP 的包名为 `pi-model-system-prompts`。随后重载或重启宿主。个人配置保留。
 
 ## 开发验证
 
