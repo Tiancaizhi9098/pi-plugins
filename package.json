@@ -1,7 +1,7 @@
 {
   "name": "pi-plugins",
-  "version": "1.2.0",
-  "description": "Pi and OMP extensions with per-model pasted system prompts, always or once per session.",
+  "version": "1.3.0",
+  "description": "Pi and OMP plugin collection: per-model system prompts and Pi goals with automatic provider-error recovery.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -24,7 +24,8 @@
   ],
   "pi": {
     "extensions": [
-      "./plugins/model-system-prompts/src/index.ts"
+      "./plugins/model-system-prompts/src/index.ts",
+      "./plugins/goal-retry/dist/index.ts"
     ]
   },
   "engines": {
@@ -35,15 +36,19 @@
     "@oh-my-pi/pi-coding-agent": ">=18.15.0"
   },
   "devDependencies": {
+    "@narumitw/pi-tui-kit": "0.69.1",
     "@earendil-works/pi-coding-agent": "1.5.0",
     "@oh-my-pi/pi-coding-agent": "18.15.0",
     "@types/bun": "1.4.4",
     "@types/node": "^24.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "esbuild": "0.28.2"
   },
   "scripts": {
-    "test": "npm run test:pi && npm run test:omp",
-    "typecheck": "tsc --noEmit -p plugins/model-system-prompts/tsconfig.json",
+    "test": "npm run test:pi && npm run test:omp && npm run test:goal",
+    "typecheck": "tsc --noEmit -p plugins/model-system-prompts/tsconfig.json && tsc --noEmit -p plugins/goal-retry/tsconfig.json",
+    "build:goal": "node plugins/goal-retry/scripts/build.mjs",
+    "test:goal": "node --test plugins/goal-retry/test/*.test.mjs",
     "test:pi": "node --test plugins/model-system-prompts/tests/*.test.ts",
     "test:omp": "bun test --preload ./plugins/model-system-prompts/tests/omp/preload.ts ./plugins/model-system-prompts/tests/omp"
   },
