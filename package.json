@@ -1,7 +1,7 @@
 {
   "name": "pi-plugins",
-  "version": "1.3.0",
-  "description": "Pi and OMP plugin collection: per-model system prompts and Pi goals with automatic provider-error recovery.",
+  "version": "1.4.0",
+  "description": "Pi and OMP plugins: model system prompts, goal recovery, and per-conversation temporary workspaces.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -25,7 +25,8 @@
   "pi": {
     "extensions": [
       "./plugins/model-system-prompts/src/index.ts",
-      "./plugins/goal-retry/dist/index.ts"
+      "./plugins/goal-retry/dist/index.ts",
+      "./plugins/temp-workspaces/index.js"
     ]
   },
   "engines": {
@@ -45,7 +46,8 @@
     "esbuild": "0.28.2"
   },
   "scripts": {
-    "test": "npm run test:pi && npm run test:omp && npm run test:goal",
+    "test": "npm run test:pi && npm run test:omp && npm run test:goal && npm run test:temp-workspaces",
+    "test:temp-workspaces": "node --test plugins/temp-workspaces/test/*.test.mjs",
     "typecheck": "tsc --noEmit -p plugins/model-system-prompts/tsconfig.json && tsc --noEmit -p plugins/goal-retry/tsconfig.json",
     "build:goal": "node plugins/goal-retry/scripts/build.mjs",
     "test:goal": "node --test plugins/goal-retry/test/*.test.mjs",
