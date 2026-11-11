@@ -1,6 +1,6 @@
 {
   "name": "pi-temp-workspaces",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Per-conversation local scratch folders with cleanup when a Pi session is deleted.",
   "type": "module",
   "license": "MIT",
@@ -10,10 +10,34 @@
     "directory": "plugins/temp-workspaces"
   },
   "homepage": "https://github.com/Tiancaizhi9098/pi-plugins/tree/main/plugins/temp-workspaces#readme",
-  "keywords": ["pi-package", "pi-extension", "temporary-workspace", "session-cleanup"],
-  "files": ["index.js", "extension.mjs", "manager.mjs", "janitor.mjs", "scripts", "README.md", "LICENSE"],
-  "pi": { "extensions": ["./index.js"] },
-  "scripts": { "test": "node --test test/*.test.mjs" },
-  "engines": { "node": ">=22.19.0" },
-  "peerDependencies": { "@earendil-works/pi-coding-agent": ">=1.5.0" }
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "temporary-workspace",
+    "session-cleanup"
+  ],
+  "files": [
+    "index.js",
+    "extension.mjs",
+    "manager.mjs",
+    "janitor.mjs",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=1.5.0"
+  }
 }

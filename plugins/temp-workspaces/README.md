@@ -4,7 +4,7 @@
 
 ## 使用
 
-在 `%TEMP%\Pi-Work` 中启动 Pi，扩展会自动为当前会话分配 `session-<标识>` 子目录。可选的 PowerShell 7 启动器能在盘符根目录或用户主目录运行 `pi` 时自动进入这个父目录，在项目目录启动时保持当前目录。
+安装后重开 Pi 或执行 `/reload`。从用户主目录（如 `C:\Users\你的用户名`）、盘符根目录（如 `C:\`）或临时父目录启动时，扩展会自动创建 `%TEMP%\Pi-Work`，并为当前会话分配 `session-<标识>` 子目录。无需手动建目录，也无需安装 PowerShell 启动脚本。在项目目录启动时，保留项目的原有工作目录。
 
 - 新启动的对话及 `/new`：各自获得独立目录。
 - `/resume`、`pi -c`：同一对话继续使用原目录。
@@ -16,7 +16,7 @@
 - `/temp-work stop` / `/temp-work start`：手动停止或启动清理进程。停止只影响清理，下一次启动临时对话会再次启动。
 - 项目目录中的普通对话：保持 Pi 原有工具和目录行为。
 
-Pi 的会话记录仍存放在其原来的全局会话库中，临时对话在列表中仍归到 `Pi-Work`。模型看到的有效目录、文件工具和命令的默认目录是每个对话自己的子目录；可以用 `/temp-work` 查看。
+Pi 的会话记录仍存放在其原来的全局会话库中，会话列表及原生页脚按实际启动目录归类和显示。模型看到的有效目录、文件工具和命令的默认目录是每个对话自己的子目录；可以用 `/temp-work` 查看。可选的 PowerShell 启动器能让从用户主目录或盘符根目录启动的 Pi 在列表和原生页脚中也显示为 `Pi-Work`。
 
 ## 文件落点
 
@@ -43,22 +43,32 @@ Shell、MCP 和其他扩展仍保留本机权限。外部工具的专用缓存�
 
 ## 安装和停止
 
-克隆仓库后安装本插件：
+独立安装本插件：
 
-```powershell
-git clone https://github.com/Tiancaizhi9098/pi-plugins.git
-Set-Location pi-plugins
-pi install ./plugins/temp-workspaces
+```text
+pi install git:github.com/Tiancaizhi9098/pi-temp-workspaces
 ```
 
-新开 Pi 或执行 `/reload`。本地安装会引用源码目录，请保留仓库；更新时在仓库中执行 `git pull` 后 `/reload`。曾经手动放置过 `~/.pi/agent/extensions/pi-temp-workspaces/` 独立版的用户，应先退出 Pi、按下文停止旧清理进程并将旧扩展移出 `extensions`，再安装本插件，避免重复加载。
+或克隆仓库后安装：
 
-### 可选：配置 PowerShell 7 的 pi 启动目录
+```powershell
+git clone https://github.com/Tiancaizhi9098/pi-temp-workspaces.git
+Set-Location pi-temp-workspaces
+pi install .
+```
+
+新开 Pi 或执行 `/reload`。曾经手动放置过 `~/.pi/agent/extensions/pi-temp-workspaces/` 的用户，应先退出 Pi、按下文停止旧清理进程并将旧扩展移出 `extensions`，再安装本仓库版本，避免重复加载。
+
+已通过 GitHub 安装的用户可执行 `pi update --extensions` 后 `/reload`。`Pi-Work` 会在第一次符合条件的 Pi 启动或重载时创建；`pi install` 命令本身只登记和下载插件，不启动会话。项目目录中不会自动切换到临时模式。
+
+### 可选：让 PowerShell 7 的 Pi 列表和页脚也归到 Pi-Work
+
+插件自身已经会自动创建并使用临时目录。只有希望 Pi 的原生启动目录、会话列表归属也改为 `Pi-Work` 时，才需要此脚本；仅安装插件即可使用上述目录管理功能。
 
 在仓库根目录运行：
 
 ```powershell
-pwsh -File ./plugins/temp-workspaces/scripts/install-powershell7.ps1
+pwsh -File ./scripts/install-powershell7.ps1
 ```
 
 脚本查找当前 Pi 启动程序，在用户的 Pi 配置目录中保存一个启动函数，并将它加入当前用户的 PowerShell 7 通用 profile。它只替换自己标记的配置块，保留其他配置并备份被修改的现有文件。新开 PowerShell 7 后生效，已有窗口可执行 `. $PROFILE.CurrentUserAllHosts`。
@@ -68,7 +78,7 @@ pwsh -File ./plugins/temp-workspaces/scripts/install-powershell7.ps1
 移除启动目录配置：
 
 ```powershell
-pwsh -File ./plugins/temp-workspaces/scripts/install-powershell7.ps1 -Uninstall
+pwsh -File ./scripts/install-powershell7.ps1 -Uninstall
 ```
 
 此操作移除 profile 中的启动块，保留其他配置、后续添加的内容、备份和不再引用的启动器文件；新开的 PowerShell 7 窗口恢复直接调用原 Pi 命令。
@@ -96,7 +106,7 @@ node ./janitor.mjs --agent-dir $piAgentDir --stop
 node ./janitor.mjs --agent-dir $piAgentDir --status
 ```
 
-停用时先在 `/temp-work stop` 或上面的 Node 命令中停止清理，再退出使用中的 Pi。安装过启动目录配置的用户先运行 `-Uninstall`，再在原克隆仓库中执行 `pi remove ./plugins/temp-workspaces`。手动安装的扩展可移出 `extensions`。已有对话和工作文件会保留；多个自定义父目录的后台进程需分别停止，Node 命令可附加 `--root <绝对路径>`。
+停用时先在 `/temp-work stop` 或上面的 Node 命令中停止清理，再退出使用中的 Pi。安装过启动目录配置的用户先运行 `-Uninstall`，再用 `pi remove git:github.com/Tiancaizhi9098/pi-temp-workspaces` 卸载；本地安装的用户在原克隆仓库中执行 `pi remove .`。手动安装的扩展可移出 `extensions`。已有对话和工作文件会保留；多个自定义父目录的后台进程需分别停止，Node 命令可附加 `--root <绝对路径>`。
 
 异常清理会保留目录并记录在状态目录的 `cleanup.log` 中。`/temp-work status` 显示进程未运行时，可用 `/temp-work start` 重启；目录标记损坏时不要手动伪造标记，应先另行保存需要的文件。扩展会保留旧的损坏进程锁以便检查，并可在其超过 30 秒后重新启动清理进程。
 
@@ -106,4 +116,4 @@ node ./janitor.mjs --agent-dir $piAgentDir --status
 node --test test/*.test.mjs
 ```
 
-先在仓库根目录执行 `npm ci --ignore-scripts`。测试覆盖独立目录、新建/恢复、Pi 自动加载及实际 RPC 切换、真实文件/PowerShell 工具、后台清理和停止、Magpie 式会话移走、在用保护、损坏标记、外部路径、目录链接、占用失败重试、系统清空临时目录、自定义根目录及 PowerShell 安装/卸载。PowerShell 测试在 Windows 上运行；Linux 运行其余测试，macOS 尚未验证。
+先在仓库根目录执行 `npm ci --ignore-scripts`。测试覆盖用户主目录/盘符根目录自动创建、项目目录保持、独立目录、新建/恢复、Pi 自动加载及实际 RPC 切换、真实文件/PowerShell 工具、后台清理和停止、Magpie 式会话移走、在用保护、损坏标记、外部路径、目录链接、占用失败重试、系统清空临时目录、自定义根目录及 PowerShell 安装/卸载。PowerShell 测试在 Windows 上运行；Linux 运行其余测试，macOS 尚未验证。
